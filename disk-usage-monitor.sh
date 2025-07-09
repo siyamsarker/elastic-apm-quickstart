@@ -1,3 +1,4 @@
+```bash
 #!/bin/bash
 
 # Elasticsearch Disk Usage Monitor
@@ -34,8 +35,13 @@ curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
 
 echo
 echo "=== APM Indices older than 15 days ==="
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    CUTOFF_DATE=$(date -v-15d '+%Y-%m-%d')
+else
+    CUTOFF_DATE=$(date --date="15 days ago" '+%Y-%m-%d')
+fi
 curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string,store.size" | \
-    awk -v cutoff_date="$(date -v-15d '+%Y-%m-%d')" '
+    awk -v cutoff_date="$CUTOFF_DATE" '
     $2 < cutoff_date {print "OLD: " $1 " (" $2 ") - " $3}'
-
+```

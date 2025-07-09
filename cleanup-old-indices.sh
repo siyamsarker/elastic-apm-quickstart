@@ -1,3 +1,4 @@
+```bash
 #!/bin/bash
 
 # Automated cleanup script for indices older than 15 days
@@ -19,7 +20,11 @@ else
 fi
 
 # Get indices older than 15 days
-CUTOFF_DATE=$(date -v-15d '+%Y-%m-%d')
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    CUTOFF_DATE=$(date -v-15d '+%Y-%m-%d')
+else
+    CUTOFF_DATE=$(date --date="15 days ago" '+%Y-%m-%d')
+fi
 
 echo "$(date): Starting cleanup of indices older than ${CUTOFF_DATE}"
 
@@ -37,3 +42,4 @@ curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     }'
 
 echo "$(date): Cleanup completed"
+```

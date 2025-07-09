@@ -42,6 +42,28 @@ chmod +x setup.sh
 - **Ports**: 9200, 5601, and 8200 must be available
 - **OS**: macOS, Linux, or Windows with WSL2
 
+### Required Tools
+
+The maintenance scripts (`cleanup-old-indices.sh`, `disk-usage-monitor.sh`, `ilm-15-day-retention.sh`) require the following tools:
+
+- **jq**: JSON processor for parsing Elasticsearch responses
+- **curl**: Command-line tool for HTTP requests
+- **awk**: Text processing tool for filtering indices
+
+**Installation Instructions**:
+
+| Tool | macOS | Linux (Debian/Ubuntu) | Linux (CentOS/RHEL) | Windows (WSL2) |
+|------|-------|-----------------------|---------------------|----------------|
+| **jq** | `brew install jq` | `sudo apt update && sudo apt install jq` | `sudo yum install epel-release && sudo yum install jq` | Follow Linux instructions for your WSL2 distro |
+| **curl** | Pre-installed (or `brew install curl`) | Pre-installed (or `sudo apt install curl`) | Pre-installed (or `sudo yum install curl`) | Pre-installed in most WSL2 distros |
+| **awk** | Pre-installed (BSD awk) | Pre-installed (GNU awk) | Pre-installed (GNU awk) | Pre-installed in most WSL2 distros |
+
+**Notes**:
+- On macOS, install Homebrew (`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`) if not already present.
+- On Linux, ensure you have `sudo` privileges for package installation.
+- On Windows, use WSL2 with a Linux distribution (e.g., Ubuntu) and follow the corresponding Linux instructions.
+- Verify installation with `jq --version`, `curl --version`, and `awk --version`.
+
 ### Container Runtime (Choose One)
 
 #### Option A: Docker (Recommended)
@@ -97,12 +119,16 @@ The `ilm-15-day-retention.sh` script configures Index Lifecycle Management (ILM)
 - **Delete Phase**: Indices are deleted after 15 days.
 - **Applicable Data**: Covers APM traces, logs, metrics, and general logs/traces.
 
+Before running the scripts, ensure they have executable permissions:
+
+```bash
+# Set executable permissions for maintenance scripts
+chmod +x ilm-15-day-retention.sh cleanup-old-indices.sh disk-usage-monitor.sh
+```
+
 **To configure the ILM policy:**
 
 ```bash
-# Make the script executable
-chmod +x ilm-15-day-retention.sh
-
 # Run the ILM setup script
 ./ilm-15-day-retention.sh
 ```
@@ -164,10 +190,10 @@ To automate the cleanup of indices older than 15 days, you can schedule `cleanup
    curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
        "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string" | \
        awk -v cutoff_date="$CUTOFF_DATE" '
-       $2 < cutoff_date {
-           system("curl -X DELETE -s -u \"${ELASTIC_USER}:${ELASTIC_PASSWORD}\" \"http://${ELASTIC_HOST}/" $1 "\"")
-           print "Deleted: " $1
-       }'
+   $2 < cutoff_date {
+       system("curl -X DELETE -s -u \"${ELASTIC_USER}:${ELASTIC_PASSWORD}\" \"http://${ELASTIC_HOST}/" $1 "\"")
+       print "Deleted: " $1
+   }'
    ```
 
 2. **Add to Cron**:
@@ -292,7 +318,7 @@ pip install elastic-apm
 
 ```bash
 -javaagent:elastic-apm-agent-1.x.x.jar
--Delastic.apm.server_urls=http://localhost:8200
+-Delastic.apm.server_urls=http://localhost:9200
 -Delastic.apm.secret_token=Zi07Ksmqd1iCFyOlFWhGnhuP1KHg8fSaxx
 -Delastic.apm.service_name=my-java-app
 -Delastic.apm.service_version=1.0.0
@@ -331,8 +357,7 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 ```
 
 **Installation:**
-ćmi
-System: ```bash
+```bash
 dotnet add package Elastic.Apm.NetCoreAll
 ```
 </details>
@@ -414,7 +439,8 @@ docker compose logs -f apm-server
 # Test APM endpoint
 curl -I http://localhost:8200
 
-# Check APM server health curl http://localhost:8200
+# Check APM server health
+curl http://localhost:8200
 ```
 
 **Token Validation:**

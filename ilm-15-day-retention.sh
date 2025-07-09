@@ -1,3 +1,4 @@
+```bash
 #!/bin/bash
 
 # Elasticsearch ILM Policy Manager - 15 Day Retention
@@ -197,9 +198,14 @@ curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
 
 echo
 echo "=== APM Indices older than 15 days ==="
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    CUTOFF_DATE=$(date -v-15d '+%Y-%m-%d')
+else
+    CUTOFF_DATE=$(date --date="15 days ago" '+%Y-%m-%d')
+fi
 curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string,store.size" | \
-    awk -v cutoff_date="$(date -v-15d '+%Y-%m-%d')" '
+    awk -v cutoff_date="$CUTOFF_DATE" '
     $2 < cutoff_date {print "OLD: " $1 " (" $2 ") - " $3}'
 
 EOF
@@ -235,7 +241,11 @@ else
 fi
 
 # Get indices older than 15 days
-CUTOFF_DATE=$(date -v-15d '+%Y-%m-%d')
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    CUTOFF_DATE=$(date -v-15d '+%Y-%m-%d')
+else
+    CUTOFF_DATE=$(date --date="15 days ago" '+%Y-%m-%d')
+fi
 
 echo "$(date): Starting cleanup of indices older than ${CUTOFF_DATE}"
 
@@ -244,13 +254,13 @@ echo "SAFETY: This script is in dry-run mode. Edit the script to enable actual d
 exit 0
 
 # Uncomment the lines below to enable actual deletion
-# curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
-#     "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string" | \
-#     awk -v cutoff_date="$CUTOFF_DATE" '
-#     $2 < cutoff_date {
-#         system("curl -X DELETE -s -u \"${ELASTIC_USER}:${ELASTIC_PASSWORD}\" \"http://${ELASTIC_HOST}/" $1 "\"")
-#         print "Deleted: " $1
-#     }'
+curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
+    "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string" | \
+    awk -v cutoff_date="$CUTOFF_DATE" '
+    $2 < cutoff_date {
+        system("curl -X DELETE -s -u \"${ELASTIC_USER}:${ELASTIC_PASSWORD}\" \"http://${ELASTIC_HOST}/" $1 "\"")
+        print "Deleted: " $1
+    }'
 
 echo "$(date): Cleanup completed"
 EOF
@@ -299,3 +309,4 @@ main() {
 
 # Run main function
 main "$@"
+```
