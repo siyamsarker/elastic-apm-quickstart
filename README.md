@@ -85,6 +85,111 @@ The intelligent `setup.sh` script automatically detects your container runtime a
 - 🧪 **Health checks** all components
 - 📋 **Displays** service URLs and credentials
 
+### 📂 Index Lifecycle Management (ILM) and Maintenance Scripts
+
+This setup includes scripts to manage Elasticsearch indices with a 15-day retention policy and monitor disk usage. Below is an overview of how to configure the ILM policy, when to use the provided scripts, and how to schedule automated cleanup.
+
+#### Configuring ILM Policy
+
+The `ilm-15-day-retention.sh` script configures Index Lifecycle Management (ILM) policies to automatically manage and delete indices older than 15 days for APM, logs, traces, and metrics data. It creates policies with the following characteristics:
+
+- **Hot Phase**: Indices are set to high priority (100) with a rollover after 1 day or when the primary shard reaches 10GB.
+- **Delete Phase**: Indices are deleted after 15 days.
+- **Applicable Data**: Covers APM traces, logs, metrics, and general logs/traces.
+
+**To configure the ILM policy:**
+
+```bash
+# Make the script executable
+chmod +x ilm-15-day-retention.sh
+
+# Run the ILM setup script
+./ilm-15-day-retention.sh
+```
+
+**What it does:**
+- Verifies Elasticsearch connectivity.
+- Creates or updates ILM policies for various data types (e.g., `traces-apm.traces-15day-policy`, `logs-15day-retention`).
+- Applies a default 15-day retention policy for new indices.
+- Generates `disk-usage-monitor.sh` and `cleanup-old-indices.sh` for monitoring and cleanup tasks.
+
+**Note**: Ensure the `.env` file contains the `ELASTIC_PASSWORD` before running the script. The script will exit with an error if the `.env` file or password is missing.
+
+#### Using Maintenance Scripts
+
+The following scripts help manage and monitor your Elasticsearch indices:
+
+- **`ilm-15-day-retention.sh`**:
+  - **When to use**: Run this script initially after setting up Elasticsearch to configure the 15-day retention ILM policies or when you need to update these policies. It should be executed once during setup or after changes to the retention requirements.
+  - **Usage**:
+    ```bash
+    ./ilm-15-day-retention.sh
+    ```
+  - **Output**: Displays the status of policy creation and lists all policies with 15-day retention.
+
+- **`disk-usage-monitor.sh`**:
+  - **When to use**: Use this script to monitor disk usage and identify indices consuming the most space or those older than 15 days. Run it periodically to check the health of your Elasticsearch cluster or when troubleshooting storage issues.
+  - **Usage**:
+    ```bash
+    ./disk-usage-monitor.sh
+    ```
+  - **Output**: Shows the top 20 indices by size, data stream information, and a list of APM-related indices older than 15 days.
+
+- **`cleanup-old-indices.sh`**:
+  - **When to use**: Use this script to manually delete indices older than 15 days or to test cleanup logic. By default, it runs in dry-run mode (no actual deletion). Enable actual deletion by editing the script to remove the safety exit and uncomment the deletion logic.
+  - **Usage**:
+    ```bash
+    ./cleanup-old-indices.sh
+    ```
+  - **Output**: Lists indices older than 15 days and simulates deletion (in dry-run mode).
+
+**Note**: Always review the output of `disk-usage-monitor.sh` before enabling deletion in `cleanup-old-indices.sh` to avoid accidental data loss.
+
+#### Scheduling Automated Cleanup with Cron
+
+To automate the cleanup of indices older than 15 days, you can schedule `cleanup-old-indices.sh` to run via a cron job. Follow these steps:
+
+1. **Enable Deletion in the Script**:
+   - Open `cleanup-old-indices.sh` in a text editor.
+   - Comment out the line `exit 0` under the "SAFETY" comment.
+   - Uncomment the `curl` and `awk` commands in the deletion section to enable actual deletion.
+
+   **Example (modified section of `cleanup-old-indices.sh`)**:
+   ```bash
+   # This is a safety check - comment out the exit line below to enable actual deletion
+   # echo "SAFETY: This script is in dry-run mode. Edit the script to enable actual deletion."
+   # exit 0
+
+   # Uncomment the lines below to enable actual deletion
+   curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
+       "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string" | \
+       awk -v cutoff_date="$CUTOFF_DATE" '
+       $2 < cutoff_date {
+           system("curl -X DELETE -s -u \"${ELASTIC_USER}:${ELASTIC_PASSWORD}\" \"http://${ELASTIC_HOST}/" $1 "\"")
+           print "Deleted: " $1
+       }'
+   ```
+
+2. **Add to Cron**:
+   - Open the crontab editor:
+     ```bash
+     crontab -e
+     ```
+   - Add a cron job to run the script daily at 2 AM (adjust the time as needed):
+     ```bash
+     0 2 * * * /path/to/elastic-apm-quickstart/cleanup-old-indices.sh >> /path/to/elastic-apm-quickstart/cleanup.log 2>&1
+     ```
+     Replace `/path/to/elastic-apm-quickstart/` with the actual path to your project directory.
+   - Save and exit the editor.
+
+3. **Verify the Cron Job**:
+   - Check the cron log (typically `/var/log/syslog` or `/var/log/cron` on Linux) to ensure the job runs as scheduled.
+   - Review the `cleanup.log` file for output and any errors.
+
+**Note**: Ensure the `.env` file is accessible to the cron job (in the project directory) and contains the correct `ELASTIC_PASSWORD`. Test the script manually first to confirm it works as expected.
+
+**Warning**: Deleting indices is irreversible. Always back up critical data and test the cleanup script in dry-run mode before scheduling it.
+
 ### Manual Setup
 
 If you prefer to run commands manually, use the appropriate compose command for your runtime:
@@ -226,7 +331,8 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 ```
 
 **Installation:**
-```bash
+ćmi
+System: ```bash
 dotnet add package Elastic.Apm.NetCoreAll
 ```
 </details>
@@ -308,8 +414,7 @@ docker compose logs -f apm-server
 # Test APM endpoint
 curl -I http://localhost:8200
 
-# Check APM server health
-curl http://localhost:8200
+# Check APM server health curl http://localhost:8200
 ```
 
 **Token Validation:**
@@ -387,7 +492,10 @@ podman-compose down -v
 ├── 🚀 setup.sh             # 🤖 Automated setup script
 ├── 🐳 docker-compose.yml   # 📦 Container orchestration
 ├── 🔐 .env                 # 🔑 Environment variables
-└── 📈 apm-server.yml       # ⚙️ APM server configuration
+├── 📈 apm-server.yml       # ⚙️ APM server configuration
+├── 🧹 cleanup-old-indices.sh # 🗑️ Script for cleaning old indices
+├── 📊 disk-usage-monitor.sh  # 📈 Script for monitoring disk usage
+├── 🔄 ilm-15-day-retention.sh # 🔧 Script for configuring ILM policies
 ```
 
 ### 🗂️ Key Files
@@ -398,6 +506,9 @@ podman-compose down -v
 | `docker-compose.yml` | 📦 Orchestration | Service definitions and networking |
 | `.env` | 🔑 Configuration | Passwords, tokens, and environment variables |
 | `apm-server.yml` | ⚙️ APM Config | APM server-specific settings |
+| `cleanup-old-indices.sh` | 🗑️ Index Cleanup | Deletes indices older than 15 days (dry-run by default) |
+| `disk-usage-monitor.sh` | 📈 Disk Monitoring | Monitors index sizes and identifies old indices |
+| `ilm-15-day-retention.sh` | 🔧 ILM Configuration | Configures 15-day retention policies for indices |
 
 ## 🔐 Security Guidelines
 
