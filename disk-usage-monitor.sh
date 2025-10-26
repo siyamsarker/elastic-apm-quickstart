@@ -42,4 +42,11 @@ fi
 curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string,store.size" | \
     awk -v cutoff_date="$CUTOFF_DATE" '
-    $2 < cutoff_date {print "OLD: " $1 " (" $2 ") - " $3}'
+    {
+        # Extract date from ISO8601 timestamp (YYYY-MM-DDTHH:MM:SS.sssZ)
+        split($2, parts, "T")
+        index_date = parts[1]
+        if (index_date < cutoff_date) {
+            print "OLD: " $1 " (created: " index_date ") - " $3
+        }
+    }'
