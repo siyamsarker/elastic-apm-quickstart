@@ -4,7 +4,7 @@ set -e
 
 # Function to display help
 show_help() {
-    echo "Elastic Stack 9.0.3 Setup Script"
+    echo "Elastic Stack 9.2.0 Setup Script"
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
@@ -113,7 +113,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo "🚀 Setting up Elastic Stack 9.0.3..."
+echo "🚀 Setting up Elastic Stack 9.2.0..."
 
 # Detect container runtime and compose tool
 CONTAINER_RUNTIME=""

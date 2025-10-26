@@ -1,15 +1,15 @@
-# 🚀 Elastic Stack 9.0.3 - Complete APM Setup
+# 🚀 Elastic Stack 9.2.0 - Complete APM Setup
 
 > **Production-ready Elasticsearch, Kibana, and APM Server deployment with automated setup**
 
-[![Elastic Stack](https://img.shields.io/badge/Elastic%20Stack-9.0.3-005571)](https://www.elastic.co/)
+[![Elastic Stack](https://img.shields.io/badge/Elastic%20Stack-9.2.0-005571)](https://www.elastic.co/)
 [![Docker](https://img.shields.io/badge/Docker-supported-2496ED)](https://www.docker.com/)
 [![Podman](https://img.shields.io/badge/Podman-supported-892CA0)](https://podman.io/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## 📖 Overview
 
-This repository provides a **complete, production-ready Elastic Stack 9.0.3** setup with:
+This repository provides a **complete, production-ready Elastic Stack 9.2.0** setup with:
 
 - 🔍 **Elasticsearch** - Distributed search and analytics engine
 - 📊 **Kibana** - Data visualization and management
@@ -362,12 +362,14 @@ dotnet add package Elastic.Apm.NetCoreAll
 ```
 </details>
 
-## 🔄 What's New in 9.0.3
+## 🔄 What's New in 9.2.0
 
-- 🔒 **Enhanced Security**: Improved authentication and authorization
-- 🚀 **Performance**: Better resource utilization and faster startup
-- 📊 **Monitoring**: Enhanced APM capabilities and metrics
-- 🔧 **Configuration**: Streamlined setup with better defaults
+Note: For an authoritative list of changes and breaking notes, see the official Elastic Stack 9.2.0 release notes.
+
+- Stability and performance improvements across the stack
+- Ongoing security hardening and default-safe configurations
+- APM and observability enhancements
+- Refer to Elastic docs for full, version-specific details
 
 ## 🔧 Troubleshooting
 
@@ -513,7 +515,7 @@ podman-compose down -v
 ## 📊 Project Structure
 
 ```
-📁 Elastic APM 9.0.3/
+📁 Elastic APM 9.2.0/
 ├── 📜 README.md           # 📝 This documentation
 ├── 🚀 setup.sh             # 🤖 Automated setup script
 ├── 🐳 docker-compose.yml   # 📦 Container orchestration

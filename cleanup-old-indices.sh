@@ -1,4 +1,3 @@
-```bash
 #!/bin/bash
 
 # Automated cleanup script for indices older than 15 days
@@ -42,4 +41,3 @@ curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     }'
 
 echo "$(date): Cleanup completed"
-```

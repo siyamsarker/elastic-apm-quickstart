@@ -1,4 +1,3 @@
-```bash
 #!/bin/bash
 
 # Elasticsearch ILM Policy Manager - 15 Day Retention
@@ -309,4 +308,3 @@ main() {
 
 # Run main function
 main "$@"
-```

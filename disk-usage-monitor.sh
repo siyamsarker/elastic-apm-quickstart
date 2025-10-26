@@ -1,4 +1,3 @@
-```bash
 #!/bin/bash
 
 # Elasticsearch Disk Usage Monitor
@@ -44,4 +43,3 @@ curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string,store.size" | \
     awk -v cutoff_date="$CUTOFF_DATE" '
     $2 < cutoff_date {print "OLD: " $1 " (" $2 ") - " $3}'
-```
