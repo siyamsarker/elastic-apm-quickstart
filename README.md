@@ -171,6 +171,138 @@ The following scripts help manage and monitor your Elasticsearch indices:
 
 **Note**: Always review the output of `disk-usage-monitor.sh` before enabling deletion in `cleanup-old-indices.sh` to avoid accidental data loss.
 
+#### Three Ways Data Can Be Deleted
+
+There are three different approaches to delete old indices from your Elasticsearch cluster:
+
+##### **Option 1: ILM Automatic Deletion** ✅ (Recommended)
+
+This is the **automated, production-ready** approach where Elasticsearch manages data lifecycle automatically.
+
+**How it works:**
+1. Run the ILM setup script to create policies:
+   ```bash
+   ./ilm-15-day-retention.sh
+   ```
+
+2. Attach policies to your indices (one-time manual step):
+   ```bash
+   # Example: Attach policy to an index via Kibana Dev Tools or curl
+   curl -X PUT -u elastic:${ELASTIC_PASSWORD} \
+     "http://localhost:9200/my-index-name/_settings" \
+     -H "Content-Type: application/json" \
+     -d '{"index.lifecycle.name": "logs-15day-retention"}'
+   ```
+
+3. Elasticsearch automatically handles:
+   - Daily rollover (or at 10GB per shard)
+   - Deletion after 15 days from rollover
+
+**Timeline:**
+- Day 0: Index created with policy attached
+- Day 1: Rollover to new index
+- Day 16: Old index automatically deleted
+
+**Pros:**
+- ✅ Fully automated after initial setup
+- ✅ Production-ready and reliable
+- ✅ No manual intervention needed
+- ✅ Elasticsearch handles everything
+
+**Cons:**
+- ⚠️ Only affects indices with policies attached
+- ⚠️ Requires manual policy attachment for existing indices
+- ⚠️ 15-day wait before first deletion
+
+---
+
+##### **Option 2: Manual Cleanup Script** (Immediate)
+
+Use the generated cleanup script to **manually delete old indices on demand**.
+
+**How it works:**
+1. Generate the cleanup script:
+   ```bash
+   ./ilm-15-day-retention.sh  # Creates cleanup-old-indices.sh
+   ```
+
+2. Test in dry-run mode (safe, shows what would be deleted):
+   ```bash
+   ./cleanup-old-indices.sh
+   ```
+
+3. Enable actual deletion by editing the script:
+   ```bash
+   nano cleanup-old-indices.sh
+   # Remove or comment out line: exit 0
+   ```
+
+4. Run the script to delete indices:
+   ```bash
+   ./cleanup-old-indices.sh
+   ```
+
+**Pros:**
+- ✅ Immediate deletion
+- ✅ Works on existing indices without policies
+- ✅ Full control over when cleanup happens
+- ✅ Dry-run mode for safety
+
+**Cons:**
+- ⚠️ Manual execution required
+- ⚠️ Deletion is permanent and irreversible
+- ⚠️ Must remember to run periodically
+
+---
+
+##### **Option 3: Scheduled Cleanup** (Cron Job)
+
+Automate the cleanup script to run on a schedule using cron.
+
+**How it works:**
+1. Enable deletion in `cleanup-old-indices.sh` (edit the file and remove `exit 0`)
+
+2. Add to crontab:
+   ```bash
+   crontab -e
+   ```
+
+3. Add this line to run daily at 2 AM:
+   ```bash
+   0 2 * * * /path/to/elastic-apm-quickstart/cleanup-old-indices.sh >> /path/to/elastic-apm-quickstart/cleanup.log 2>&1
+   ```
+
+4. Verify the cron job is scheduled:
+   ```bash
+   crontab -l
+   ```
+
+**Pros:**
+- ✅ Automated daily cleanup
+- ✅ Works with existing indices
+- ✅ Logs output for monitoring
+- ✅ No ILM policy setup needed
+
+**Cons:**
+- ⚠️ Requires cron access
+- ⚠️ Less flexible than ILM
+- ⚠️ Must ensure script has correct permissions
+- ⚠️ Needs monitoring to ensure it runs
+
+---
+
+##### **Which Option Should You Choose?**
+
+| Scenario | Recommended Option |
+|----------|-------------------|
+| **Production environment** | Option 1: ILM Automatic |
+| **Need immediate cleanup** | Option 2: Manual Script |
+| **Simple automated cleanup** | Option 3: Cron Job |
+| **Testing/Development** | Option 2: Manual Script |
+| **Large-scale deployment** | Option 1: ILM Automatic |
+
+**Important:** Regardless of which option you choose, **always test in a non-production environment first** and ensure you have backups of critical data.
+
 #### Scheduling Automated Cleanup with Cron
 
 To automate the cleanup of indices older than 15 days, you can schedule `cleanup-old-indices.sh` to run via a cron job. Follow these steps:
