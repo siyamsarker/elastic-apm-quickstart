@@ -385,22 +385,20 @@ echo ""
 echo "$(date): Deletion completed"
 echo ""
 
-# Force merge to reclaim disk space
-echo "🔄 Force merging indices to reclaim disk space..."
-curl -X POST -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
-    "http://${ELASTIC_HOST}/*/_forcemerge?max_num_segments=1" \
-    -H "Content-Type: application/json" > /dev/null
-
-echo "✅ Force merge completed"
+# Skip force merge - it's not necessary for disk space reclaim
+# Elasticsearch automatically reclaims space, and force merge can take hours
+echo "ℹ️  Note: Disk space will be reclaimed automatically by Elasticsearch"
+echo "ℹ️  For immediate reclaim, you can manually run: curl -X POST \"http://localhost:9200/_forcemerge?max_num_segments=1\""
 echo ""
-echo "💡 Disk space has been reclaimed. Run 'df -hT' to verify."
-echo "$(date): Full cleanup completed"
+echo "💡 Run 'df -hT' to check current disk usage"
+echo "$(date): Cleanup completed"
 EOF
 
     chmod +x cleanup-old-indices.sh
-    print_status "✅ Created cleanup-old-indices.sh (deletion + force merge enabled)"
+    print_status "✅ Created cleanup-old-indices.sh (automatic deletion enabled)"
     
-    print_warning "⚠️  WARNING: This script will PERMANENTLY delete indices older than 15 days AND reclaim disk space"
+    print_warning "⚠️  WARNING: This script will PERMANENTLY delete indices older than 15 days"
+    print_warning "⚠️  Disk space is reclaimed automatically by Elasticsearch (may take a few minutes)"
     print_warning "⚠️  Consider adding to cron: 0 2 * * * /path/to/cleanup-old-indices.sh"
 }
 
