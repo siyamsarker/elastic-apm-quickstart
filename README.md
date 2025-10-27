@@ -162,14 +162,14 @@ The following scripts help manage and monitor your Elasticsearch indices:
   - **Output**: Shows the top 20 indices by size, data stream information, and a list of APM-related indices older than 15 days.
 
 - **`cleanup-old-indices.sh`**:
-  - **When to use**: Use this script to manually delete indices older than 15 days or to test cleanup logic. By default, it runs in dry-run mode (no actual deletion). Enable actual deletion by editing the script to remove the safety exit and uncomment the deletion logic.
+  - **When to use**: Use this script to manually delete indices older than 15 days. **⚠️ WARNING: This script permanently deletes data** - review indices with `disk-usage-monitor.sh` before running.
   - **Usage**:
     ```bash
     ./cleanup-old-indices.sh
     ```
-  - **Output**: Lists indices older than 15 days and simulates deletion (in dry-run mode).
+  - **Output**: Lists and deletes indices older than 15 days.
 
-**Note**: Always review the output of `disk-usage-monitor.sh` before enabling deletion in `cleanup-old-indices.sh` to avoid accidental data loss.
+**Note**: Always review the output of `disk-usage-monitor.sh` before running `cleanup-old-indices.sh` to avoid accidental data loss. **The cleanup script will permanently delete data without confirmation.**
 
 #### Three Ways Data Can Be Deleted
 
@@ -226,31 +226,28 @@ Use the generated cleanup script to **manually delete old indices on demand**.
    ./ilm-15-day-retention.sh  # Creates cleanup-old-indices.sh
    ```
 
-2. Test in dry-run mode (safe, shows what would be deleted):
+2. Review indices that will be deleted (optional):
+   ```bash
+   ./disk-usage-monitor.sh
+   ```
+
+3. Run the script to delete indices:
    ```bash
    ./cleanup-old-indices.sh
    ```
-
-3. Enable actual deletion by editing the script:
-   ```bash
-   nano cleanup-old-indices.sh
-   # Remove or comment out line: exit 0
-   ```
-
-4. Run the script to delete indices:
-   ```bash
-   ./cleanup-old-indices.sh
-   ```
+   
+   **⚠️ WARNING:** This will **permanently delete** all indices older than 15 days without confirmation!
 
 **Pros:**
 - ✅ Immediate deletion
 - ✅ Works on existing indices without policies
 - ✅ Full control over when cleanup happens
-- ✅ Dry-run mode for safety
+- ✅ Simple and straightforward
 
 **Cons:**
 - ⚠️ Manual execution required
 - ⚠️ Deletion is permanent and irreversible
+- ⚠️ No confirmation prompt before deletion
 - ⚠️ Must remember to run periodically
 
 ---
@@ -260,7 +257,10 @@ Use the generated cleanup script to **manually delete old indices on demand**.
 Automate the cleanup script to run on a schedule using cron.
 
 **How it works:**
-1. Enable deletion in `cleanup-old-indices.sh` (edit the file and remove `exit 0`)
+1. Verify the cleanup script is executable:
+   ```bash
+   chmod +x cleanup-old-indices.sh
+   ```
 
 2. Add to crontab:
    ```bash
@@ -288,6 +288,7 @@ Automate the cleanup script to run on a schedule using cron.
 - ⚠️ Less flexible than ILM
 - ⚠️ Must ensure script has correct permissions
 - ⚠️ Needs monitoring to ensure it runs
+- ⚠️ Deletes data automatically without manual review
 
 ---
 
@@ -307,25 +308,9 @@ Automate the cleanup script to run on a schedule using cron.
 
 To automate the cleanup of indices older than 15 days, you can schedule `cleanup-old-indices.sh` to run via a cron job. Follow these steps:
 
-1. **Enable Deletion in the Script**:
-   - Open `cleanup-old-indices.sh` in a text editor.
-   - Comment out the line `exit 0` under the "SAFETY" comment.
-   - Uncomment the `curl` and `awk` commands in the deletion section to enable actual deletion.
-
-   **Example (modified section of `cleanup-old-indices.sh`)**:
+1. **Verify the Script is Executable**:
    ```bash
-   # This is a safety check - comment out the exit line below to enable actual deletion
-   # echo "SAFETY: This script is in dry-run mode. Edit the script to enable actual deletion."
-   # exit 0
-
-   # Uncomment the lines below to enable actual deletion
-   curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
-       "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string" | \
-       awk -v cutoff_date="$CUTOFF_DATE" '
-   $2 < cutoff_date {
-       system("curl -X DELETE -s -u \"${ELASTIC_USER}:${ELASTIC_PASSWORD}\" \"http://${ELASTIC_HOST}/" $1 "\"")
-       print "Deleted: " $1
-   }'
+   chmod +x cleanup-old-indices.sh
    ```
 
 2. **Add to Cron**:
@@ -346,7 +331,7 @@ To automate the cleanup of indices older than 15 days, you can schedule `cleanup
 
 **Note**: Ensure the `.env` file is accessible to the cron job (in the project directory) and contains the correct `ELASTIC_PASSWORD`. Test the script manually first to confirm it works as expected.
 
-**Warning**: Deleting indices is irreversible. Always back up critical data and test the cleanup script in dry-run mode before scheduling it.
+**⚠️ WARNING**: The cleanup script **permanently deletes indices older than 15 days** without confirmation. Always back up critical data and test the script manually before scheduling it with cron.
 
 ### Manual Setup
 
