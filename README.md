@@ -25,6 +25,13 @@ This repository provides a **complete, production-ready Elastic Stack 9.2.0** se
 git clone https://github.com/siyamsarker/elastic-apm-quickstart.git
 cd "elastic-apm-quickstart"
 
+# Create environment file from example
+cp .env.example .env
+
+# Edit .env file and set your passwords
+# IMPORTANT: Replace all 'changeme' values with strong, unique passwords
+nano .env  # or use your preferred editor
+
 # Make setup script executable
 chmod +x setup.sh
 
@@ -75,6 +82,64 @@ The maintenance scripts (`cleanup-old-indices.sh`, `disk-usage-monitor.sh`, `ilm
 - 🍺 **macOS**: `brew install podman podman-compose`
 - 📦 **Linux**: Install podman + `pip install podman-compose`
 - 🪟 **Windows**: [Podman Desktop](https://podman-desktop.io/)
+
+## 🔐 Environment Configuration
+
+Before running the setup, you need to configure environment variables with strong passwords.
+
+### Step 1: Create .env File
+
+```bash
+# Copy the example file
+cp .env.example .env
+```
+
+### Step 2: Generate Strong Passwords
+
+**Option A: Using OpenSSL (Recommended)**
+```bash
+# Generate Elasticsearch password
+openssl rand -base64 24
+
+# Generate Kibana password
+openssl rand -base64 24
+
+# Generate Kibana encryption key (exactly 32 characters)
+openssl rand -base64 32 | head -c 32
+
+# Generate APM secret token
+openssl rand -base64 24
+```
+
+**Option B: Using /dev/urandom**
+```bash
+# Generate random passwords
+cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 24 | head -n 1
+```
+
+### Step 3: Edit .env File
+
+Open the `.env` file and replace all `changeme` values with the generated passwords:
+
+```bash
+nano .env  # or use vim, code, etc.
+```
+
+**Example .env file:**
+```bash
+ELASTIC_PASSWORD=your_generated_elastic_password_here
+KIBANA_PASSWORD=your_generated_kibana_password_here
+KIBANA_ENCRYPTION_KEY=your_32_character_encryption_key
+FLEET_ENROLLMENT_TOKEN=
+APM_SECRET_TOKEN=your_generated_apm_token_here
+```
+
+**⚠️ Important:**
+- Use **different passwords** for each variable
+- Passwords should be **at least 16 characters** long
+- The Kibana encryption key **must be exactly 32 characters**
+- Keep your `.env` file **secure** and never commit it to git (already in .gitignore)
+- Save a backup of your passwords in a secure password manager
 
 ## 🎮 Setup Commands
 
