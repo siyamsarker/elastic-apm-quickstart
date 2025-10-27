@@ -10,12 +10,14 @@ show_help() {
     echo "Options:"
     echo "  -h, --help     Show this help message"
     echo "  -c, --clean    Clean up existing containers and volumes before setup"
+    echo "  --clean-only   Only clean up containers and volumes (no setup)"
     echo "  -s, --status   Show status of services"
     echo "  --stop         Stop all services"
     echo ""
     echo "Examples:"
     echo "  $0               # Normal setup"
-    echo "  $0 --clean      # Clean setup (removes all data)"
+    echo "  $0 --clean      # Clean setup (removes all data and re-setup)"
+    echo "  $0 --clean-only # Only cleanup, don't setup"
     echo "  $0 --status     # Check service status"
     echo "  $0 --stop       # Stop all services"
 }
@@ -93,6 +95,10 @@ while [[ $# -gt 0 ]]; do
             CLEAN_SETUP=true
             shift
             ;;
+        --clean-only)
+            CLEAN_ONLY=true
+            shift
+            ;;
         -s|--status)
             # Load environment variables for status check
             if [ -f .env ]; then
@@ -144,9 +150,32 @@ else
     exit 1
 fi
 
-# Load environment variables
+# Handle clean-only operation (doesn't require .env)
+if [ "$CLEAN_ONLY" = "true" ]; then
+    echo "🧹 Cleaning up all Elastic Stack containers and volumes..."
+    ${COMPOSE_CMD} down --volumes
+    echo "✅ Cleanup completed!"
+    echo ""
+    echo "💡 To setup again, run: $0"
+    exit 0
+fi
+
+# Handle clean setup (before loading .env since clean might not need it)
+if [ "$CLEAN_SETUP" = "true" ]; then
+    echo "🧹 Cleaning up existing containers and volumes..."
+    ${COMPOSE_CMD} down --volumes
+    echo "✅ Cleanup completed!"
+    echo ""
+fi
+
+# Load environment variables (required for normal setup)
 if [ ! -f .env ]; then
-    echo "❌ .env file not found. Please ensure the .env file exists."
+    echo "❌ .env file not found!"
+    echo ""
+    echo "Please create a .env file with required credentials:"
+    echo "  1. Copy the example: cp .env.example .env"
+    echo "  2. Edit with strong passwords: nano .env"
+    echo ""
     exit 1
 fi
 source .env
@@ -186,14 +215,6 @@ stop_services() {
     echo "🛑 Stopping existing services..."
     ${COMPOSE_CMD} down
 }
-
-# Handle clean setup
-if [ "$CLEAN_SETUP" = "true" ]; then
-    echo "🧹 Cleaning up existing containers and volumes..."
-    ${COMPOSE_CMD} down --volumes
-    echo "✅ Cleanup completed!"
-    echo ""
-fi
 
 # Stop any existing containers to avoid conflicts
 echo "🧹 Stopping any existing containers..."
