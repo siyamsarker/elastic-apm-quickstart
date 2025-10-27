@@ -74,12 +74,10 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "$(date): Starting cleanup of indices older than ${CUTOFF_DATE}"
+echo "⚠️  WARNING: This will permanently delete indices older than ${CUTOFF_DATE}"
+echo ""
 
-# This is a safety check - comment out the exit line below to enable actual deletion
-echo "SAFETY: This script is in dry-run mode. Edit the script to enable actual deletion."
-exit 0
-
-# Uncomment the lines below to enable actual deletion
+# Delete indices older than 15 days
 curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string" | \
     awk -v cutoff_date="$CUTOFF_DATE" '
@@ -93,4 +91,5 @@ curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
         }
     }'
 
+echo ""
 echo "$(date): Cleanup completed"
