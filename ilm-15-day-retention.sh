@@ -385,20 +385,54 @@ echo ""
 echo "$(date): Deletion completed"
 echo ""
 
-# Skip force merge - it's not necessary for disk space reclaim
-# Elasticsearch automatically reclaims space, and force merge can take hours
-echo "ℹ️  Note: Disk space will be reclaimed automatically by Elasticsearch"
-echo "ℹ️  For immediate reclaim, you can manually run: curl -X POST \"http://localhost:9200/_forcemerge?max_num_segments=1\""
+# Force merge indices to reclaim disk space immediately
+echo "🔄 Force merging indices to reclaim disk space..."
+echo "ℹ️  This may take several minutes depending on data size"
 echo ""
-echo "💡 Run 'df -hT' to check current disk usage"
-echo "$(date): Cleanup completed"
+
+# Get list of all non-system indices (exclude dot-prefixed system indices)
+INDICES=$(curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
+    "http://${ELASTIC_HOST}/_cat/indices?h=index" | grep -v "^\." | sort)
+
+TOTAL=$(echo "$INDICES" | wc -l | tr -d ' ')
+CURRENT=0
+
+if [ "$TOTAL" -gt 0 ]; then
+    echo "📊 Merging ${TOTAL} indices..."
+    echo ""
+    
+    # Force merge each index to show progress
+    for index in $INDICES; do
+        CURRENT=$((CURRENT + 1))
+        printf "[%d/%d] %s... " "$CURRENT" "$TOTAL" "$index"
+        
+        curl -X POST -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
+            "http://${ELASTIC_HOST}/${index}/_forcemerge?max_num_segments=1" \
+            -H "Content-Type: application/json" > /dev/null 2>&1
+        
+        if [ $? -eq 0 ]; then
+            echo "✅"
+        else
+            echo "⚠️"
+        fi
+    done
+    
+    echo ""
+    echo "✅ Force merge completed"
+else
+    echo "ℹ️  No indices to merge"
+fi
+
+echo ""
+echo "💡 Disk space has been reclaimed. Run 'df -hT' to verify."
+echo "$(date): Full cleanup completed"
 EOF
 
     chmod +x cleanup-old-indices.sh
-    print_status "✅ Created cleanup-old-indices.sh (automatic deletion enabled)"
+    print_status "✅ Created cleanup-old-indices.sh (complete solution with progress tracking)"
     
-    print_warning "⚠️  WARNING: This script will PERMANENTLY delete indices older than 15 days"
-    print_warning "⚠️  Disk space is reclaimed automatically by Elasticsearch (may take a few minutes)"
+    print_warning "⚠️  WARNING: This script will PERMANENTLY delete indices older than 15 days and force merge"
+    print_warning "⚠️  Force merge may take several minutes depending on data size"
     print_warning "⚠️  Consider adding to cron: 0 2 * * * /path/to/cleanup-old-indices.sh"
 }
 
