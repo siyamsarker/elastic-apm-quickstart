@@ -151,8 +151,11 @@ The intelligent `setup.sh` script automatically detects your container runtime a
 # 🚀 Normal setup
 ./setup.sh
 
-# 🧹 Clean installation (removes existing data)
+# 🧹 Clean installation (removes existing data and re-setup)
 ./setup.sh --clean
+
+# 🗑️  Remove all containers and volumes (no re-setup)
+./setup.sh --clean-only
 
 # 📊 Check service status
 ./setup.sh --status
@@ -163,6 +166,24 @@ The intelligent `setup.sh` script automatically detects your container runtime a
 # ❓ Show help
 ./setup.sh --help
 ```
+
+### 📋 Command Reference
+
+| Command | Requires .env | Function |
+|---------|---------------|----------|
+| `./setup.sh` | ✅ Yes | Start/setup all services |
+| `./setup.sh --clean` | ✅ Yes | Remove data, then re-setup |
+| `./setup.sh --clean-only` | ❌ No | Only remove containers/volumes |
+| `./setup.sh --status` | ⚠️ Optional | Show service status |
+| `./setup.sh --stop` | ❌ No | Stop all services |
+| `./setup.sh --help` | ❌ No | Show usage information |
+
+**Use Cases:**
+- **First time setup:** `./setup.sh`
+- **Corrupted data / fresh start:** `./setup.sh --clean`
+- **Just cleanup before manual reinstall:** `./setup.sh --clean-only`
+- **Check if services are running:** `./setup.sh --status`
+- **Temporarily stop services:** `./setup.sh --stop`
 
 ### ✨ What the Script Does
 
