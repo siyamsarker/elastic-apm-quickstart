@@ -181,6 +181,54 @@ else
     exit 1
 fi
 
+# Portable date calculation function that works on ALL systems
+get_date_n_days_ago() {
+    local days_ago=$1
+    local result_date=""
+    
+    # Try GNU date (Linux standard)
+    if result_date=$(date --date="${days_ago} days ago" '+%Y-%m-%d' 2>/dev/null); then
+        echo "$result_date"
+        return 0
+    fi
+    
+    # Try BSD date (macOS)
+    if result_date=$(date -v-${days_ago}d '+%Y-%m-%d' 2>/dev/null); then
+        echo "$result_date"
+        return 0
+    fi
+    
+    # Fallback using Python 3
+    if command -v python3 &> /dev/null; then
+        result_date=$(python3 -c "from datetime import datetime, timedelta; print((datetime.now() - timedelta(days=${days_ago})).strftime('%Y-%m-%d'))" 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$result_date" ]; then
+            echo "$result_date"
+            return 0
+        fi
+    fi
+    
+    # Fallback using Python 2
+    if command -v python &> /dev/null; then
+        result_date=$(python -c "from datetime import datetime, timedelta; print((datetime.now() - timedelta(days=${days_ago})).strftime('%Y-%m-%d'))" 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$result_date" ]; then
+            echo "$result_date"
+            return 0
+        fi
+    fi
+    
+    # Fallback using Perl
+    if command -v perl &> /dev/null; then
+        result_date=$(perl -MTime::Piece -E "say Time::Piece->new(time - ${days_ago}*86400)->strftime('%Y-%m-%d')" 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$result_date" ]; then
+            echo "$result_date"
+            return 0
+        fi
+    fi
+    
+    echo "ERROR: Unable to calculate date. Please install one of: GNU coreutils, Python, or Perl" >&2
+    return 1
+}
+
 echo "=== Elasticsearch Index Disk Usage ==="
 echo "Date: $(date)"
 echo
@@ -197,15 +245,22 @@ curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
 
 echo
 echo "=== APM Indices older than 15 days ==="
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    CUTOFF_DATE=$(date -v-15d '+%Y-%m-%d')
-else
-    CUTOFF_DATE=$(date --date="15 days ago" '+%Y-%m-%d')
+CUTOFF_DATE=$(get_date_n_days_ago 15)
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to calculate cutoff date"
+    exit 1
 fi
 curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string,store.size" | \
     awk -v cutoff_date="$CUTOFF_DATE" '
-    $2 < cutoff_date {print "OLD: " $1 " (" $2 ") - " $3}'
+    {
+        # Extract date from ISO8601 timestamp (YYYY-MM-DDTHH:MM:SS.sssZ)
+        split($2, parts, "T")
+        index_date = parts[1]
+        if (index_date < cutoff_date) {
+            print "OLD: " $1 " (created: " index_date ") - " $3
+        }
+    }'
 
 EOF
 
@@ -239,11 +294,59 @@ else
     exit 1
 fi
 
+# Portable date calculation function that works on ALL systems
+get_date_n_days_ago() {
+    local days_ago=$1
+    local result_date=""
+    
+    # Try GNU date (Linux standard)
+    if result_date=$(date --date="${days_ago} days ago" '+%Y-%m-%d' 2>/dev/null); then
+        echo "$result_date"
+        return 0
+    fi
+    
+    # Try BSD date (macOS)
+    if result_date=$(date -v-${days_ago}d '+%Y-%m-%d' 2>/dev/null); then
+        echo "$result_date"
+        return 0
+    fi
+    
+    # Fallback using Python 3
+    if command -v python3 &> /dev/null; then
+        result_date=$(python3 -c "from datetime import datetime, timedelta; print((datetime.now() - timedelta(days=${days_ago})).strftime('%Y-%m-%d'))" 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$result_date" ]; then
+            echo "$result_date"
+            return 0
+        fi
+    fi
+    
+    # Fallback using Python 2
+    if command -v python &> /dev/null; then
+        result_date=$(python -c "from datetime import datetime, timedelta; print((datetime.now() - timedelta(days=${days_ago})).strftime('%Y-%m-%d'))" 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$result_date" ]; then
+            echo "$result_date"
+            return 0
+        fi
+    fi
+    
+    # Fallback using Perl
+    if command -v perl &> /dev/null; then
+        result_date=$(perl -MTime::Piece -E "say Time::Piece->new(time - ${days_ago}*86400)->strftime('%Y-%m-%d')" 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$result_date" ]; then
+            echo "$result_date"
+            return 0
+        fi
+    fi
+    
+    echo "ERROR: Unable to calculate date. Please install one of: GNU coreutils, Python, or Perl" >&2
+    return 1
+}
+
 # Get indices older than 15 days
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    CUTOFF_DATE=$(date -v-15d '+%Y-%m-%d')
-else
-    CUTOFF_DATE=$(date --date="15 days ago" '+%Y-%m-%d')
+CUTOFF_DATE=$(get_date_n_days_ago 15)
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to calculate cutoff date"
+    exit 1
 fi
 
 echo "$(date): Starting cleanup of indices older than ${CUTOFF_DATE}"
@@ -256,9 +359,14 @@ exit 0
 curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string" | \
     awk -v cutoff_date="$CUTOFF_DATE" '
-    $2 < cutoff_date {
-        system("curl -X DELETE -s -u \"${ELASTIC_USER}:${ELASTIC_PASSWORD}\" \"http://${ELASTIC_HOST}/" $1 "\"")
-        print "Deleted: " $1
+    {
+        # Extract date from ISO8601 timestamp (YYYY-MM-DDTHH:MM:SS.sssZ)
+        split($2, parts, "T")
+        index_date = parts[1]
+        if (index_date < cutoff_date) {
+            system("curl -X DELETE -s -u \"${ELASTIC_USER}:${ELASTIC_PASSWORD}\" \"http://${ELASTIC_HOST}/" $1 "\"")
+            print "Deleted: " $1 " (created: " index_date ")"
+        }
     }'
 
 echo "$(date): Cleanup completed"
