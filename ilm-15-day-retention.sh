@@ -353,6 +353,20 @@ echo "$(date): Starting cleanup of indices older than ${CUTOFF_DATE}"
 echo "⚠️  WARNING: This will permanently delete indices older than ${CUTOFF_DATE}"
 echo ""
 
+# Count indices to be deleted
+INDICES_COUNT=$(curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
+    "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string" | \
+    awk -v cutoff_date="$CUTOFF_DATE" '
+    {
+        split($2, parts, "T")
+        index_date = parts[1]
+        if (index_date < cutoff_date) count++
+    }
+    END { print count+0 }')
+
+echo "📊 Found ${INDICES_COUNT} indices to delete"
+echo ""
+
 # Delete indices older than 15 days
 curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     "http://${ELASTIC_HOST}/_cat/indices/*apm*,*trace*,*metric*,*log*?h=index,creation.date.string" | \
@@ -368,13 +382,25 @@ curl -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     }'
 
 echo ""
-echo "$(date): Cleanup completed"
+echo "$(date): Deletion completed"
+echo ""
+
+# Force merge to reclaim disk space
+echo "🔄 Force merging indices to reclaim disk space..."
+curl -X POST -s -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
+    "http://${ELASTIC_HOST}/*/_forcemerge?max_num_segments=1" \
+    -H "Content-Type: application/json" > /dev/null
+
+echo "✅ Force merge completed"
+echo ""
+echo "💡 Disk space has been reclaimed. Run 'df -hT' to verify."
+echo "$(date): Full cleanup completed"
 EOF
 
     chmod +x cleanup-old-indices.sh
-    print_status "✅ Created cleanup-old-indices.sh (deletion enabled)"
+    print_status "✅ Created cleanup-old-indices.sh (deletion + force merge enabled)"
     
-    print_warning "⚠️  WARNING: This script will PERMANENTLY delete indices older than 15 days"
+    print_warning "⚠️  WARNING: This script will PERMANENTLY delete indices older than 15 days AND reclaim disk space"
     print_warning "⚠️  Consider adding to cron: 0 2 * * * /path/to/cleanup-old-indices.sh"
 }
 
