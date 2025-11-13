@@ -310,8 +310,6 @@ if [ "$apm_status" = "401" ] || [ "$apm_status" = "200" ]; then
 else
     echo "  - APM Server: ❌ Not accessible"
 fi
-    echo "  - APM Server: ❌ Not accessible"
-fi
 
 echo ""
 echo "🎉 Setup complete!"
