@@ -53,7 +53,7 @@ show_status() {
     
     if ${runtime_cmd} ps --filter "name=apm-server" --format "{{.Names}}" | grep -q "apm-server"; then
         # Check if APM server is responding (401 means auth required, which is expected)
-        apm_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8200 2>/dev/null)
+        apm_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8200 2>/dev/null || echo "000")
         if [ "$apm_status" = "401" ] || [ "$apm_status" = "200" ]; then
             echo "  ✅ APM Server: Running (auth required)"
         else
@@ -284,7 +284,7 @@ max_attempts=30
 
 while [ $attempt -lt $max_attempts ]; do
     # APM Server returns 401 when auth is required but service is up
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8200 2>/dev/null)
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8200 2>/dev/null || echo "000")
     if [ "$http_code" = "401" ] || [ "$http_code" = "200" ]; then
         echo "✅ APM Server is ready!"
         break
@@ -304,10 +304,12 @@ echo "🔍 Final status check:"
 echo "  - Elasticsearch: $(curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200 2>/dev/null > /dev/null && echo '✅ Running' || echo '❌ Not accessible')"
 echo "  - Kibana: $(curl -s http://localhost:5601 2>/dev/null > /dev/null && echo '✅ Running' || echo '❌ Not accessible')"
 # APM Server returns 401 when auth is required (expected behavior)
-apm_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8200 2>/dev/null)
+apm_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8200 2>/dev/null || echo "000")
 if [ "$apm_status" = "401" ] || [ "$apm_status" = "200" ]; then
     echo "  - APM Server: ✅ Running (auth required)"
 else
+    echo "  - APM Server: ❌ Not accessible"
+fi
     echo "  - APM Server: ❌ Not accessible"
 fi
 
