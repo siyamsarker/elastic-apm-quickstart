@@ -1,8 +1,28 @@
 apm-server:
   host: "0.0.0.0:8200"
+  
+  # Secret token for agent authentication (REQUIRED)
   secret_token: "${APM_SECRET_TOKEN}"
+  
+  # API Key authentication (more secure, recommended)
+  api_key:
+    enabled: true
+  
+  # Authentication settings
+  auth:
+    # Require secret token for all intake requests
+    secret_token: "${APM_SECRET_TOKEN}"
+  
+  # Real User Monitoring (RUM) configuration
   rum:
     enabled: true
+    # Allow origins for CORS (restrict in production)
+    allow_origins: ['*']
+    # Disable anonymous access - require authentication
+    allow_service_names: []
+    # RUM must use secret token or API key
+    source_mapping:
+      enabled: false
 
 output.elasticsearch:
   hosts: ["elasticsearch:9200"]

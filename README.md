@@ -454,20 +454,50 @@ Once deployed, access your Elastic Stack services:
 ### Default Credentials
 
 - **Username**: `elastic`
-- **Password**: `OYyP6OIrT9aUaoXjk2tLaDxx` (from .env file)
+- **Password**: Set in your `.env` file (`ELASTIC_PASSWORD`)
 
 ### Security Tokens
 
-- **APM Secret Token**: `Zi07Ksmqd1iCFyOlFWhGnhuP1KHg8fSaxx`
-- **Kibana Encryption Key**: `RCQGBqLU5fJUOUvfmO9R4uk6qAlrYLUF`
+- **APM Secret Token**: Set in your `.env` file (`APM_SECRET_TOKEN`)
+- **Kibana Encryption Key**: Set in your `.env` file (`KIBANA_ENCRYPTION_KEY`)
 
-> ⚠️ **Security Note**: Change these credentials for production use!
+> ⚠️ **Security Note**: Change these credentials for production use! Generate strong, unique passwords.
+
+### 🔒 APM Server Security
+
+**IMPORTANT:** APM Server is configured with **STRICT authentication requirements**. All APM agents MUST include a valid secret token or API key.
+
+**Security Features:**
+- ✅ Secret token authentication **required** for all requests
+- ✅ API key authentication enabled
+- ✅ Anonymous access **disabled**
+- ✅ RUM (Real User Monitoring) requires authentication
+
+**⚠️ Connection Requirements:**
+- All APM agents **MUST** provide the `APM_SECRET_TOKEN` from your `.env` file
+- Requests without valid authentication will be **rejected**
+- This prevents unauthorized data ingestion and protects your APM server
+
+**Testing Authentication:**
+```bash
+# This should FAIL (no authentication)
+curl http://localhost:8200/
+
+# This should SUCCEED (with authentication)
+curl -H "Authorization: Bearer YOUR_APM_SECRET_TOKEN" http://localhost:8200/
+```
 
 ## 📈 APM Integration
 
 ### Connection Settings
 
 | Parameter | Value |
+|-----------|-------|
+| **APM Server URL** | `http://localhost:8200` |
+| **Secret Token** | Your `APM_SECRET_TOKEN` from `.env` file |
+| **Service Name** | `your-app-name` |
+
+**⚠️ CRITICAL:** Always use the secret token from your `.env` file in production. Never hardcode tokens in your application code.
 |-----------|-------|
 | **APM Server URL** | `http://localhost:8200` |
 | **Secret Token** | `Zi07Ksmqd1iCFyOlFWhGnhuP1KHg8fSaxx` |
@@ -481,10 +511,10 @@ Once deployed, access your Elastic Stack services:
 ```javascript
 const apm = require('elastic-apm-node').start({
   serverUrl: 'http://localhost:8200',
-  secretToken: 'Zi07Ksmqd1iCFyOlFWhGnhuP1KHg8fSaxx',
+  secretToken: process.env.APM_SECRET_TOKEN, // Load from environment variable
   serviceName: 'my-nodejs-app',
   serviceVersion: '1.0.0',
-  environment: 'development'
+  environment: 'production'
 });
 ```
 
@@ -492,21 +522,26 @@ const apm = require('elastic-apm-node').start({
 ```bash
 npm install elastic-apm-node
 ```
+
+**Environment Variable:**
+```bash
+export APM_SECRET_TOKEN="your_secret_token_here"
+```
 </details>
 
 <details>
 <summary><strong>🐍 Python</strong></summary>
 
 ```python
+import os
 import elasticapm
-from elasticapm.contrib.django.middleware import TracingMiddleware
 
 apm = elasticapm.Client({
     'SERVER_URL': 'http://localhost:8200',
-    'SECRET_TOKEN': 'Zi07Ksmqd1iCFyOlFWhGnhuP1KHg8fSaxx',
+    'SECRET_TOKEN': os.getenv('APM_SECRET_TOKEN'),  # Load from environment variable
     'SERVICE_NAME': 'my-python-app',
     'SERVICE_VERSION': '1.0.0',
-    'ENVIRONMENT': 'development'
+    'ENVIRONMENT': 'production'
 })
 ```
 
@@ -514,18 +549,29 @@ apm = elasticapm.Client({
 ```bash
 pip install elastic-apm
 ```
+
+**Environment Variable:**
+```bash
+export APM_SECRET_TOKEN="your_secret_token_here"
+```
 </details>
 
 <details>
 <summary><strong>☕ Java</strong></summary>
 
 ```bash
--javaagent:elastic-apm-agent-1.x.x.jar
--Delastic.apm.server_urls=http://localhost:9200
--Delastic.apm.secret_token=Zi07Ksmqd1iCFyOlFWhGnhuP1KHg8fSaxx
+# Using environment variable
+-javaagent:elastic-apm-agent.jar
+-Delastic.apm.server_urls=http://localhost:8200
+-Delastic.apm.secret_token=${APM_SECRET_TOKEN}
 -Delastic.apm.service_name=my-java-app
 -Delastic.apm.service_version=1.0.0
--Delastic.apm.environment=development
+-Delastic.apm.environment=production
+```
+
+**Environment Variable:**
+```bash
+export APM_SECRET_TOKEN="your_secret_token_here"
 ```
 
 **Download:** [Elastic APM Java Agent](https://search.maven.org/artifact/co.elastic.apm/elastic-apm-agent)
@@ -551,12 +597,17 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 {
   "ElasticApm": {
     "ServerUrl": "http://localhost:8200",
-    "SecretToken": "Zi07Ksmqd1iCFyOlFWhGnhuP1KHg8fSaxx",
+    "SecretToken": "${APM_SECRET_TOKEN}",
     "ServiceName": "my-dotnet-app",
     "ServiceVersion": "1.0.0",
-    "Environment": "development"
+    "Environment": "production"
   }
 }
+```
+
+**Or use environment variable:**
+```bash
+export ELASTIC_APM_SECRET_TOKEN="your_secret_token_here"
 ```
 
 **Installation:**

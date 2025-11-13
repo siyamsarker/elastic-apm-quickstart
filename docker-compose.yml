@@ -64,6 +64,8 @@ services:
     environment:
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - APM_SECRET_TOKEN=${APM_SECRET_TOKEN}
+      # Strict mode - reject requests without valid authentication
+      - ELASTIC_APM_STRICT_MODE=true
     volumes:
       - ./apm-server.yml:/usr/share/apm-server/apm-server.yml:ro
     ports:
