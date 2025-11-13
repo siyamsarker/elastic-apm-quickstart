@@ -39,8 +39,17 @@ show_status() {
     echo ""
     
     if ${runtime_cmd} ps --filter "name=elasticsearch" --format "{{.Names}}" | grep -q "elasticsearch"; then
-        echo "  ✅ Elasticsearch: Running"
-        curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health 2>/dev/null | jq '.status' 2>/dev/null || echo "     Health: Unknown"
+        # Check if Elasticsearch is responding and get cluster health
+        if command -v jq &> /dev/null; then
+            health=$(curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health 2>/dev/null | jq -r '.status' 2>/dev/null)
+            if [ -n "$health" ] && [ "$health" != "null" ]; then
+                echo "  ✅ Elasticsearch: Running (health: $health)"
+            else
+                echo "  ✅ Elasticsearch: Running"
+            fi
+        else
+            echo "  ✅ Elasticsearch: Running"
+        fi
     else
         echo "  ❌ Elasticsearch: Not running"
     fi
